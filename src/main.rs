@@ -1,4 +1,8 @@
-use actix_web::{get, patch, post, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, patch, post, web::Json, App, HttpResponse, HttpServer, Responder};
+use validator::Validate;
+
+mod models;
+use crate::models::book::AddBookRequest;
 
 #[get("/books")]
 async fn get_books() -> impl Responder {
@@ -6,8 +10,16 @@ async fn get_books() -> impl Responder {
 }
 
 #[post("/books")]
-async fn add_book() -> impl Responder {
-    HttpResponse::Ok().body("Book Added")
+async fn add_book(body: Json<AddBookRequest>) -> impl Responder {
+    let is_valid = body.validate();
+
+    match is_valid {
+        Ok(_) => {
+            let book_name = body.title.clone();
+            HttpResponse::Ok().body(format!("Book Added: {}", book_name))
+        }
+        Err(_) => HttpResponse::Ok().body("Book title required."),
+    }
 }
 
 #[patch("/books/{uuid}")]
