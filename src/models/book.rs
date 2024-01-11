@@ -11,3 +11,15 @@ pub struct AddBookRequest {
 pub struct UpdateBookId {
     pub uuid: String,
 }
+
+#[derive(Validate, Serialize, Deserialize, Debug)]
+pub struct Book {
+    pub uuid: String,
+    pub title: String,
+}
+
+impl Book {
+    pub fn new(uuid: String, title: String) -> Book {
+        return Book { uuid, title };
+    }
+}

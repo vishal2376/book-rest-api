@@ -1,10 +1,13 @@
 use actix_web::{
     get, patch, post,
-    web::{Json, Path},
+    web::{Data, Json, Path},
     App, HttpResponse, HttpServer, Responder,
 };
+use surrealdb::sql::Data;
 use validator::Validate;
 
+mod db;
+use crate::db::Database;
 mod models;
 use crate::models::{book::AddBookRequest, UpdateBookId};
 
@@ -34,8 +37,15 @@ async fn update_book(book_id: Path<UpdateBookId>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let db = Database::init()
+        .await
+        .expect("Error connecting to Database");
+
+    let db_data = Data::new(db);
+
     HttpServer::new(|| {
         App::new()
+            .app_data(db_data)
             .service(get_books)
             .service(add_book)
             .service(update_book)
