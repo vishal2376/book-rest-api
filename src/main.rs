@@ -1,20 +1,24 @@
 use actix_web::{
     get, patch, post,
     web::{Data, Json, Path},
-    App, HttpResponse, HttpServer, Responder,
+    App, HttpServer,
 };
 use uuid::Uuid;
 use validator::Validate;
 
 mod db;
-use crate::{db::Database, errors::BookError, models::book::Book};
+use crate::{
+    db::{pizza_data_trait::BookDataTrait, Database},
+    errors::BookError,
+    models::book::Book,
+};
 mod models;
 use crate::models::{book::AddBookRequest, UpdateBookId};
 mod errors;
 
 #[get("/books")]
 async fn get_books(db: Data<Database>) -> Result<Json<Vec<Book>>, BookError> {
-    let books = db.get_all_books().await;
+    let books = Database::get_all_books(&db).await;
     match books {
         Some(book_found) => Ok(Json(book_found)),
         None => Err(BookError::NoBookFound),
@@ -31,7 +35,7 @@ async fn add_book(body: Json<AddBookRequest>, db: Data<Database>) -> Result<Json
             let mut buffer = Uuid::encode_buffer();
             let uuid = Uuid::new_v4().simple().encode_lower(&mut buffer);
 
-            let new_book = db.add_book(Book::new(String::from(uuid), title)).await;
+            let new_book = Database::add_book(&db, Book::new(String::from(uuid), title)).await;
 
             match new_book {
                 Some(created_book) => Ok(Json(created_book)),
@@ -48,7 +52,7 @@ async fn update_book(
     db: Data<Database>,
 ) -> Result<Json<Book>, BookError> {
     let uuid = book_id.into_inner().uuid;
-    let update_result = db.update_book(uuid, String::from("Updated")).await;
+    let update_result = Database::update_book(&db, uuid, String::from("Updated")).await;
 
     match update_result {
         Some(updated_book) => Ok(Json(updated_book)),
