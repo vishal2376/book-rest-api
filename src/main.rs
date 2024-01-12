@@ -3,10 +3,11 @@ use actix_web::{
     web::{Data, Json, Path},
     App, HttpResponse, HttpServer, Responder,
 };
+use uuid::Uuid;
 use validator::Validate;
 
 mod db;
-use crate::db::Database;
+use crate::{db::Database, models::book::Book};
 mod models;
 use crate::models::{book::AddBookRequest, UpdateBookId};
 
@@ -20,13 +21,23 @@ async fn get_books(db: Data<Database>) -> impl Responder {
 }
 
 #[post("/books")]
-async fn add_book(body: Json<AddBookRequest>) -> impl Responder {
+async fn add_book(body: Json<AddBookRequest>, db: Data<Database>) -> impl Responder {
     let is_valid = body.validate();
 
     match is_valid {
         Ok(_) => {
-            let book_name = body.title.clone();
-            HttpResponse::Ok().body(format!("Book Added: {}", book_name))
+            let title = body.title.clone();
+            let mut buffer = Uuid::encode_buffer();
+            let uuid = Uuid::new_v4().simple().encode_lower(&mut buffer);
+
+            let new_book = db.add_book(Book::new(String::from(uuid), title)).await;
+
+            match new_book {
+                Some(created_book) => {
+                    HttpResponse::Ok().body(format!("New Book Added : {:?}", created_book))
+                }
+                None => HttpResponse::Ok().body("Error : Can't add book"),
+            }
         }
         Err(_) => HttpResponse::Ok().body("Book title required."),
     }
