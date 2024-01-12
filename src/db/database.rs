@@ -51,4 +51,27 @@ impl Database {
             Err(_) => None,
         }
     }
+
+    pub async fn update_book(&self, uuid: String, title: String) -> Option<Book> {
+        let find_book: Result<Option<Book>, Error> = self.client.select(("books_db", &uuid)).await;
+
+        match find_book {
+            Ok(found) => match found {
+                Some(_book_found) => {
+                    let update_book: Result<Option<Book>, Error> = self
+                        .client
+                        .update(("books_db", &uuid))
+                        .merge(Book { uuid, title })
+                        .await;
+
+                    match update_book {
+                        Ok(book) => book,
+                        Err(_) => None,
+                    }
+                }
+                None => None,
+            },
+            Err(_) => None,
+        }
+    }
 }

@@ -43,9 +43,17 @@ async fn add_book(body: Json<AddBookRequest>, db: Data<Database>) -> Result<Json
 }
 
 #[patch("/books/{uuid}")]
-async fn update_book(book_id: Path<UpdateBookId>) -> impl Responder {
+async fn update_book(
+    book_id: Path<UpdateBookId>,
+    db: Data<Database>,
+) -> Result<Json<Book>, BookError> {
     let uuid = book_id.into_inner().uuid;
-    HttpResponse::Ok().body(format!("Book Id Updated : {}", uuid))
+    let update_result = db.update_book(uuid, String::from("Updated")).await;
+
+    match update_result {
+        Some(updated_book) => Ok(Json(updated_book)),
+        None => Err(BookError::NoBookFound),
+    }
 }
 
 #[actix_web::main]
