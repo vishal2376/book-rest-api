@@ -7,21 +7,22 @@ use uuid::Uuid;
 use validator::Validate;
 
 mod db;
-use crate::{db::Database, models::book::Book};
+use crate::{db::Database, errors::BookError, models::book::Book};
 mod models;
 use crate::models::{book::AddBookRequest, UpdateBookId};
+mod errors;
 
 #[get("/books")]
-async fn get_books(db: Data<Database>) -> impl Responder {
+async fn get_books(db: Data<Database>) -> Result<Json<Vec<Book>>, BookError> {
     let books = db.get_all_books().await;
     match books {
-        Some(book_data) => HttpResponse::Ok().body(format!("{:?}", book_data)),
-        None => HttpResponse::Ok().body("Error"),
+        Some(book_found) => Ok(Json(book_found)),
+        None => Err(BookError::NoBookFound),
     }
 }
 
 #[post("/books")]
-async fn add_book(body: Json<AddBookRequest>, db: Data<Database>) -> impl Responder {
+async fn add_book(body: Json<AddBookRequest>, db: Data<Database>) -> Result<Json<Book>, BookError> {
     let is_valid = body.validate();
 
     match is_valid {
@@ -33,13 +34,11 @@ async fn add_book(body: Json<AddBookRequest>, db: Data<Database>) -> impl Respon
             let new_book = db.add_book(Book::new(String::from(uuid), title)).await;
 
             match new_book {
-                Some(created_book) => {
-                    HttpResponse::Ok().body(format!("New Book Added : {:?}", created_book))
-                }
-                None => HttpResponse::Ok().body("Error : Can't add book"),
+                Some(created_book) => Ok(Json(created_book)),
+                None => Err(BookError::BookCreationFailure),
             }
         }
-        Err(_) => HttpResponse::Ok().body("Book title required."),
+        Err(_) => Err(BookError::BookCreationFailure),
     }
 }
 
