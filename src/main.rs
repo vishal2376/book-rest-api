@@ -49,14 +49,23 @@ async fn add_book(body: Json<AddBookRequest>, db: Data<Database>) -> Result<Json
 #[patch("/books/{uuid}")]
 async fn update_book(
     book_id: Path<UpdateBookId>,
+    body: Json<AddBookRequest>,
     db: Data<Database>,
 ) -> Result<Json<Book>, BookError> {
-    let uuid = book_id.into_inner().uuid;
-    let update_result = Database::update_book(&db, uuid, String::from("Updated")).await;
+    let is_valid = body.validate();
 
-    match update_result {
-        Some(updated_book) => Ok(Json(updated_book)),
-        None => Err(BookError::NoBookFound),
+    match is_valid {
+        Ok(_) => {
+            let title = body.title.clone();
+            let uuid = book_id.into_inner().uuid;
+            let update_result = Database::update_book(&db, uuid, title).await;
+
+            match update_result {
+                Some(updated_book) => Ok(Json(updated_book)),
+                None => Err(BookError::NoBookFound),
+            }
+        }
+        Err(_) => Err(BookError::BookCreationFailure),
     }
 }
 
