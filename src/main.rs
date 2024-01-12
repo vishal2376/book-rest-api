@@ -3,7 +3,6 @@ use actix_web::{
     web::{Data, Json, Path},
     App, HttpResponse, HttpServer, Responder,
 };
-use surrealdb::sql::Data;
 use validator::Validate;
 
 mod db;
@@ -12,8 +11,12 @@ mod models;
 use crate::models::{book::AddBookRequest, UpdateBookId};
 
 #[get("/books")]
-async fn get_books() -> impl Responder {
-    HttpResponse::Ok().body("Books available")
+async fn get_books(db: Data<Database>) -> impl Responder {
+    let books = db.get_all_books().await;
+    match books {
+        Some(book_data) => HttpResponse::Ok().body(format!("{:?}", book_data)),
+        None => HttpResponse::Ok().body("Error"),
+    }
 }
 
 #[post("/books")]
@@ -43,9 +46,9 @@ async fn main() -> std::io::Result<()> {
 
     let db_data = Data::new(db);
 
-    HttpServer::new(|| {
+    HttpServer::new(move || {
         App::new()
-            .app_data(db_data)
+            .app_data(db_data.clone())
             .service(get_books)
             .service(add_book)
             .service(update_book)
